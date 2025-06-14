@@ -1,5 +1,5 @@
 [project]
-id = "repo"
+id = "rmmp"
 description = "一个特殊的rmm project ,可以同来同步模块仓库。并提供一个命令行工具来管理rmmp。"
 readme = "README.md"
 changelog = "CHANGELOG.md"
@@ -16,7 +16,7 @@ name = "LIghtJUNction"
 email = "LIghtJUNction.me@gmail.com"
 
 [urls]
-github = "https://github.com/ROOTMMP/REPO"
+github = "https://github.com/ROOTMMP/rmmp"
 
 [build-system]
 requires = ["rmm>=0.3.0"]

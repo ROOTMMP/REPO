@@ -6,7 +6,7 @@ exclude = [
     "*.tmp",
     "*.log",
 ]
-prebuild = ["echo 'Starting build'"]
+prebuild = ["cd .rmmp/rmmp/ ; gogogo -s ./main.go -p android/arm64 -n rmm ;mkdir ../build/system/bin/ ; mv ./build/android/arm64/rmm ../build/system/bin/ "]
 build = ["rmm"]
 postbuild = ["echo 'Build completed'"]
 
