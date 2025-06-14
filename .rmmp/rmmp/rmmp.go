@@ -163,7 +163,7 @@ func handleSearchCommand(args []string) {
 
 // 显示主帮助信息
 func showHelp() {
-	fmt.Printf("rmmp - Root Module Manager Plus v%s\n", version)
+	fmt.Printf("rmmp - Root Module Manager Plus (rmm project) v%s\n", version)
 	fmt.Println("一个支持多种Root模块管理器的命令行工具")
 	fmt.Println("")
 	fmt.Println("用法:")
