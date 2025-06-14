@@ -1,7 +1,7 @@
 id=rmmp
 name=rmm project mobile cli
-version=v0.3.12-7567eb74
-versionCode=2025061508
+version=v0.3.19-38c64d6b
+versionCode=2025061515
 author=LIghtJUNction
 description=rmm 移动端CLI模块，使用go构建
 updateJson=https://gh.b52m.cn/https://github.com/ROOTMMP/RMMP/releases/latest/download/update.json

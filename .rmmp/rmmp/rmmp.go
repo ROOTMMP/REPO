@@ -3,16 +3,12 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
 
 const (
-	version    = "0.3.5"
-	ksudPath   = "/data/adb/ksud"
-	apdPath    = "/data/adb/apd"
-	magiskPath = "/data/adb/magisk"
+	version = "0.3.5"
 )
 
 func main() {
@@ -22,7 +18,6 @@ func main() {
 	}
 
 	command := os.Args[1]
-
 	switch command {
 	case "module":
 		if len(os.Args) < 3 {
@@ -31,6 +26,18 @@ func main() {
 			return
 		}
 		handleModuleCommand(os.Args[2:])
+	case "get":
+		var repo string
+		if len(os.Args) < 3 {
+			// 默认为ROOTMMP/rmmp (自我更新)
+			repo = "ROOTMMP/rmmp"
+			fmt.Println("🔄 未指定仓库，默认进行自我更新...")
+		} else {
+			repo = os.Args[2]
+		}
+		handleGetCommand(repo)
+	case "proxy":
+		handleProxyCommand(os.Args[2:])
 	case "search":
 		handleSearchCommand(os.Args[2:])
 	case "version", "-v", "--version":
@@ -51,7 +58,6 @@ func handleModuleCommand(args []string) {
 	}
 
 	subCommand := args[0]
-
 	switch subCommand {
 	case "install":
 		if len(args) < 2 {
@@ -60,6 +66,8 @@ func handleModuleCommand(args []string) {
 			return
 		}
 		installModule(args[1])
+	case "list":
+		listModules()
 	default:
 		fmt.Printf("未知的模块子命令: %s\n", subCommand)
 		showModuleHelp()
@@ -87,37 +95,25 @@ func installModule(zipFile string) {
 	}
 
 	fmt.Printf("正在安装模块: %s\n", absPath)
+	fmt.Println("🔧 使用内置模块安装器...")
 
-	// 按优先级检查并执行安装
-	if fileExists(ksudPath) {
-		fmt.Println("检测到 KernelSU，使用 ksud 安装模块...")
-		executeCommand(ksudPath, "module", "install", absPath)
-	} else if fileExists(apdPath) {
-		fmt.Println("检测到 APatch，使用 apd 安装模块...")
-		executeCommand(apdPath, "module", "install", absPath)
-	} else if fileExists(magiskPath) {
-		fmt.Println("检测到 Magisk，使用 magisk 安装模块...")
-		executeCommand(magiskPath, "--install-module", absPath)
-	} else {
-		printWarning()
-	}
-}
-
-// 执行系统命令
-func executeCommand(command string, args ...string) {
-	cmd := exec.Command(command, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	fmt.Printf("执行命令: %s %s\n", command, strings.Join(args, " "))
-
-	err := cmd.Run()
+	// 使用内置的模块安装器
+	err = installModuleWithBuiltinInstaller(absPath)
 	if err != nil {
-		fmt.Printf("命令执行失败: %v\n", err)
+		fmt.Printf("❌ 模块安装失败: %v\n", err)
 		return
 	}
 
-	fmt.Println("模块安装完成!")
+	fmt.Println("✅ 模块安装完成!")
+}
+
+// installModuleWithBuiltinInstaller 使用内置安装器安装模块
+func installModuleWithBuiltinInstaller(zipPath string) error {
+	fmt.Println("📦 正在解析模块...")
+
+	// 使用 RMMD 内置安装器
+	rmmd := NewRMMD()
+	return rmmd.InstallModule(zipPath)
 }
 
 // 检查文件是否存在
@@ -126,23 +122,13 @@ func fileExists(path string) bool {
 	return !os.IsNotExist(err)
 }
 
-// 打印警告信息
-func printWarning() {
-	fmt.Println("⚠️  警告: 未检测到支持的模块管理器!")
-	fmt.Println("")
-	fmt.Println("rmmp 支持以下模块管理器:")
-	fmt.Println("  • KernelSU (ksud)")
-	fmt.Println("  • APatch (apd)")
-	fmt.Println("  • Magisk")
-	fmt.Println("")
-	fmt.Println("请确保您的设备已安装其中一种模块管理器，")
-	fmt.Println("并且相关二进制文件位于以下路径之一:")
-	fmt.Printf("  • %s\n", ksudPath)
-	fmt.Printf("  • %s\n", apdPath)
-	fmt.Printf("  • %s\n", magiskPath)
-	fmt.Println("")
-	fmt.Println("如果您确定已安装模块管理器但仍看到此警告，")
-	fmt.Println("请检查路径是否正确或联系开发者更新支持。")
+// listModules 列出已安装的模块
+func listModules() {
+	rmmd := NewRMMD()
+	err := rmmd.PrintModuleList()
+	if err != nil {
+		fmt.Printf("❌ 列出模块失败: %v\n", err)
+	}
 }
 
 // 处理搜索命令 (待开发)
@@ -171,12 +157,18 @@ func showHelp() {
 	fmt.Println("")
 	fmt.Println("可用命令:")
 	fmt.Println("  module    模块管理操作")
+	fmt.Println("  get       下载并安装GitHub仓库的模块")
+	fmt.Println("  proxy     GitHub代理管理")
 	fmt.Println("  search    搜索模块 (开发中)")
 	fmt.Println("  version   显示版本信息")
 	fmt.Println("  help      显示帮助信息")
 	fmt.Println("")
 	fmt.Println("示例:")
 	fmt.Println("  rmmp module install example.zip")
+	fmt.Println("  rmmp module list")
+	fmt.Println("  rmmp get username/repo")
+	fmt.Println("  rmmp get                    # 自我更新")
+	fmt.Println("  rmmp proxy list")
 	fmt.Println("  rmmp search keyword")
 	fmt.Println("  rmmp version")
 	fmt.Println("")
@@ -193,13 +185,94 @@ func showModuleHelp() {
 	fmt.Println("")
 	fmt.Println("可用子命令:")
 	fmt.Println("  install <zip文件>   安装指定的模块zip文件")
+	fmt.Println("  list                列出已安装的模块")
 	fmt.Println("")
-	fmt.Println("支持的模块管理器 (按优先级):")
-	fmt.Println("  1. KernelSU (ksud)")
-	fmt.Println("  2. APatch (apd)")
-	fmt.Println("  3. Magisk")
+	fmt.Println("特性:")
+	fmt.Println("  • 内置模块安装器，无需外部依赖")
+	fmt.Println("  • 支持多种Root环境 (KernelSU, APatch, Magisk)")
+	fmt.Println("  • 自动模块验证和冲突检测")
 	fmt.Println("")
 	fmt.Println("示例:")
 	fmt.Println("  rmmp module install /sdcard/module.zip")
 	fmt.Println("  rmmp module install ./local-module.zip")
+	fmt.Println("  rmmp module list")
+}
+
+// 处理代理相关命令
+func handleProxyCommand(args []string) {
+	gpm := NewGitHubProxyManager()
+
+	if len(args) < 1 {
+		showProxyHelp()
+		return
+	}
+
+	subCommand := args[0]
+
+	switch subCommand {
+	case "list", "ls":
+		err := gpm.ListProxies()
+		if err != nil {
+			fmt.Printf("❌ 获取代理列表失败: %v\n", err)
+		}
+	case "best":
+		bestProxy, err := gpm.GetBestProxy()
+		if err != nil {
+			fmt.Printf("❌ 获取最佳代理失败: %v\n", err)
+			return
+		}
+		fmt.Printf("⭐ 最佳GitHub代理: %s\n", bestProxy.URL)
+		fmt.Printf("   服务商: %s\n", bestProxy.Server)
+		fmt.Printf("   IP地址: %s\n", bestProxy.IP)
+		fmt.Printf("   延迟: %dms\n", bestProxy.Latency)
+		fmt.Printf("   速度: %.2fMB/s\n", bestProxy.Speed)
+	case "update":
+		gpm.ClearCache()
+		proxies, err := gpm.GetProxies()
+		if err != nil {
+			fmt.Printf("❌ 更新代理数据失败: %v\n", err)
+			return
+		}
+		fmt.Printf("✅ 代理数据已更新，共获取 %d 个代理\n", len(proxies))
+	case "clear":
+		err := gpm.ClearCache()
+		if err != nil {
+			fmt.Printf("❌ 清除缓存失败: %v\n", err)
+		}
+	case "help", "-h", "--help":
+		showProxyHelp()
+	default:
+		fmt.Printf("未知的代理子命令: %s\n", subCommand)
+		showProxyHelp()
+	}
+}
+
+// 显示代理命令帮助
+func showProxyHelp() {
+	fmt.Println("rmmp proxy - GitHub代理管理")
+	fmt.Println("")
+	fmt.Println("用法:")
+	fmt.Println("  rmmp proxy <子命令> [选项...]")
+	fmt.Println("")
+	fmt.Println("可用子命令:")
+	fmt.Println("  list, ls      列出所有可用的GitHub代理")
+	fmt.Println("  best          显示推荐的最佳代理")
+	fmt.Println("  update        强制更新代理数据")
+	fmt.Println("  clear         清除缓存文件")
+	fmt.Println("  help          显示帮助信息")
+	fmt.Println("")
+	fmt.Println("特性:")
+	fmt.Println("  • 自动缓存代理数据（10小时有效期）")
+	fmt.Println("  • 智能推荐最佳代理（综合延迟和速度）")
+	fmt.Println("  • 支持强制更新和缓存管理")
+	fmt.Println("  • 跨平台支持，自动选择合适的缓存路径")
+	fmt.Println("")
+	fmt.Println("示例:")
+	fmt.Println("  rmmp proxy list          # 列出所有代理")
+	fmt.Println("  rmmp proxy best          # 显示最佳代理")
+	fmt.Println("  rmmp proxy update        # 强制更新数据")
+	fmt.Println("  rmmp proxy clear         # 清除缓存")
+	fmt.Println("") // 显示当前平台的缓存路径
+	gpm := NewGitHubProxyManager()
+	fmt.Printf("缓存文件位置: %s\n", gpm.GetCacheFilePath())
 }
