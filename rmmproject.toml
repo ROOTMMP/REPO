@@ -1,0 +1,23 @@
+[project]
+id = "repo"
+description = "一个特殊的rmm project ,可以同来同步模块仓库。并提供一个命令行工具来管理rmmp。"
+readme = "README.md"
+changelog = "CHANGELOG.md"
+license = "LICENSE"
+dependencies = []
+
+[project.scripts]
+build = "rmm build"
+install = "rmm device install"
+test = "rmm test"
+
+[[authors]]
+name = "LIghtJUNction"
+email = "LIghtJUNction.me@gmail.com"
+
+[urls]
+github = "https://github.com/ROOTMMP/REPO"
+
+[build-system]
+requires = ["rmm>=0.3.0"]
+build-backend = "rmm"
